@@ -1,10 +1,10 @@
 #include "env.h"
 
 
-namespace threadP {
+namespace THREADP {
 
 class Options {
-
+    public:
 
     void setBackgroundThread(int num);
 

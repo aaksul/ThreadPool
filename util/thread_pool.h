@@ -1,5 +1,7 @@
+#pragma once
 #include <memory>
 #include "threadP/env.h"
+
 namespace THREADP {
 
 class ThreadPool {
@@ -10,10 +12,12 @@ public:
 
     void SetBackgroundThreads(int num);
 
+    void JoinAllThreads();
+
     struct Impl;
     
 private:
-    std::unique_ptr<Impl> impl_;
+    Impl* impl_;
 };
 
 

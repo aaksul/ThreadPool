@@ -13,6 +13,8 @@ struct ThreadPool::Impl {
     void SetBackgroundThreads(int num);
 
     void SetHostEnv(Env* env);
+
+    void JoinAllThreads();
     
     private:
 
@@ -26,11 +28,12 @@ struct ThreadPool::Impl {
 
 struct ThreadArg {
     ThreadPool::Impl* thread_pool_;
+    ThreadArg(ThreadPool::Impl* tp) : thread_pool_{tp} {}
 };
 
 
 void ThreadPool::Impl::threadFunc(void* arg) {
-    ThreadArg* threadArg = reinterpret_cast<ThreadArg*>(arg);
+    std::unique_ptr<ThreadArg> threadArg {reinterpret_cast<ThreadArg*>(arg)};
     ThreadPool::Impl* tp = threadArg->thread_pool_;
     Env* env = tp->env_;
     ThreadUtil::RegisterThread(env,env->getThreadID());   
@@ -39,13 +42,23 @@ void ThreadPool::Impl::threadFunc(void* arg) {
 
 ThreadPool::ThreadPool() : impl_{new Impl()} {}
 
+
 void ThreadPool::Impl::SetBackgroundThreads(int num) {
     std::lock_guard<std::mutex> lck(mu_);
     while (bgthreads_.size() < num)
     {
+        std::thread t{&threadFunc,new ThreadArg(this)};
 
+        bgthreads_.push_back(std::move(t));
     }
         
+}
+
+void ThreadPool::Impl::JoinAllThreads() {
+    for (auto& t : bgthreads_) {
+        if (t.joinable())
+            t.join();
+    }
 }
 
 void ThreadPool::Impl::SetHostEnv(Env* env) {
@@ -58,5 +71,9 @@ void ThreadPool::SetBackgroundThreads(int num) {
 
 void ThreadPool::SetHostEnv(Env* env) {
     impl_->SetHostEnv(env);
+}
+
+void ThreadPool::JoinAllThreads() {
+    impl_->JoinAllThreads();
 }
 }
